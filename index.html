@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#D4AF37" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MyNotes" />
+  <title>MyNotes — Dark Gold Edition</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%230A0A0C'/%3E%3Crect x='8' y='8' width='176' height='176' rx='36' fill='none' stroke='%23D4AF37' stroke-width='6'/%3E%3Ctext x='96' y='118' font-family='Georgia,serif' font-size='96' font-weight='bold' fill='%23D4AF37' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E" />
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <style>
+    :root {
+      --bg: #0A0A0C;
+      --surface: #131318;
+      --surface-elevated: #1B1B22;
+      --border: #282832;
+      --gold: #D4AF37;
+      --gold-soft: rgba(212, 175, 55, 0.14);
+      --gold-border: rgba(212, 175, 55, 0.38);
+      --text: #F4F2EC;
+      --muted: #9896A3;
+      --success: #34C759;
+      --warning: #FF9F0A;
+      --danger: #FF453A;
+      --info: #38BDF8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 84px;
+      overflow-x: hidden;
+    }
+
+    /* Top Bar */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: rgba(10, 10, 12, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; }
+    .logo-box {
+      width: 38px; height: 38px; border-radius: 11px;
+      background: linear-gradient(135deg, #1E1A10, #0F0F12);
+      border: 1.5px solid var(--gold);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 18px; color: var(--gold);
+      box-shadow: 0 0 14px rgba(212, 175, 55, 0.2);
+    }
+    .brand-title { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+    .group-pill {
+      font-size: 11px; padding: 2px 7px; border-radius: 6px;
+      background: var(--gold-soft); color: var(--gold); border: 1px solid var(--gold-border);
+    }
+    .sync-status { font-size: 11px; color: var(--success); display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; }
+    .dot.offline { background: var(--warning); }
+
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .install-btn {
+      background: var(--gold-soft);
+      color: var(--gold);
+      border: 1px solid var(--gold-border);
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .install-btn.ready {
+      background: linear-gradient(135deg, #D4AF37, #B89225);
+      color: #0A0A0C;
+      border: none;
+    }
+    .bell-btn {
+      position: relative;
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 16px;
+    }
+    .bell-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: var(--gold); color: #0A0A0C;
+      font-size: 10px; font-weight: 800;
+      min-width: 17px; height: 17px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; padding: 0 4px;
+    }
+
+    /* Container & Cards */
+    .container { max-width: 680px; margin: 0 auto; padding: 14px 16px; }
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .card.gold-border {
+      border-color: var(--gold-border);
+      background: linear-gradient(160deg, #171511 0%, #121216 100%);
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px; gap: 8px;
+    }
+    .card-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .card-sub { font-size: 12px; color: var(--muted); }
+
+    /* Hero Greeting */
+    .hero-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .date-chip {
+      display: inline-block; font-size: 11px; color: var(--gold);
+      background: var(--gold-soft); border: 1px solid var(--gold-border);
+      padding: 3px 10px; border-radius: 20px; margin-bottom: 8px;
+    }
+    .hero-h1 { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+    .hero-desc { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+
+    .ring-wrap { position: relative; width: 74px; height: 74px; flex-shrink: 0; }
+    .ring-text {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+    }
+    .ring-pct { font-size: 15px; font-weight: 800; color: var(--gold); }
+    .ring-lbl { font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+
+    .hero-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+    .btn-primary {
+      background: linear-gradient(135deg, #D4AF37, #B58E22);
+      color: #0A0A0C; border: none; border-radius: 12px;
+      padding: 11px 14px; font-size: 13px; font-weight: 700;
+      cursor: pointer; text-align: center;
+    }
+    .btn-secondary {
+      background: var(--surface-elevated);
+      color: var(--text); border: 1px solid var(--gold-border);
+      border-radius: 12px; padding: 11px 14px;
+      font-size: 13px; font-weight: 600; cursor: pointer; text-align: center;
+    }
+    .btn-danger {
+      background: rgba(255, 69, 58, 0.14);
+      color: var(--danger); border: 1px solid rgba(255, 69, 58, 0.35);
+      border-radius: 10px; padding: 7px 11px; font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-sm { padding: 6px 10px; font-size: 11.5px; border-radius: 8px; }
+
+    /* Group & Day Tabs */
+    .segment-bar {
+      display: grid; grid-template-columns: 1fr 1fr;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 4px; margin-bottom: 12px;
+    }
+    .segment-btn {
+      padding: 8px; border-radius: 9px; border: none;
+      background: transparent; color: var(--muted);
+      font-weight: 700; font-size: 13px; cursor: pointer;
+    }
+    .segment-btn.active { background: var(--gold); color: #0A0A0C; }
+
+    .day-pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px; }
+    .day-pill {
+      padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: var(--surface-elevated); color: var(--muted);
+      border: 1px solid var(--border); cursor: pointer; white-space: nowrap;
+    }
+    .day-pill.active { background: var(--gold-soft); color: var(--gold); border-color: var(--gold); }
+
+    /* Class Item */
+    .class-item {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--gold);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 9px;
+    }
+    .class-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .pair-badge {
+      font-size: 11px; font-weight: 700; color: var(--gold);
+      background: var(--gold-soft); padding: 2px 8px; border-radius: 6px;
+    }
+    .type-badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 6px;
+      background: rgba(56, 189, 248, 0.14); color: var(--info);
+    }
+    .class-name { font-size: 14px; font-weight: 700; margin-bottom: 5px; }
+    .class-meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 10px; }
+
+    /* Task Item */
+    .task-item {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .task-item.completed { opacity: 0.65; border-color: rgba(52, 199, 89, 0.35); }
+    .stage-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+    .stage-chip {
+      font-size: 10.5px; padding: 3px 7px; border-radius: 6px;
+      background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    }
+    .stage-chip.fired { border-color: var(--gold); color: var(--gold); }
+
+    /* Alarm Banner (Only for Tasks/Classes, NEVER for Chat!) */
+    .alarm-banner {
+      position: fixed; top: 64px; left: 12px; right: 12px; z-index: 90;
+      max-width: 656px; margin: 0 auto;
+      background: #1D1910; border: 1.5px solid var(--gold);
+      border-radius: 16px; padding: 14px;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.75);
+      display: none;
+    }
+    .alarm-banner.show { display: block; animation: slideDown 0.25s ease; }
+    @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    /* Secret Zero-Push Chat */
+    .chat-box {
+      height: 360px; overflow-y: auto;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 12px;
+      display: flex; flex-direction: column; gap: 10px;
+      margin-bottom: 10px;
+    }
+    .msg {
+      max-width: 82%; padding: 10px 12px; border-radius: 14px;
+      font-size: 13px; line-height: 1.4; position: relative;
+    }
+    .msg.mine {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #2B2412, #1E1A10);
+      border: 1px solid var(--gold-border);
+      color: var(--text);
+    }
+    .msg.theirs {
+      align-self: flex-start;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+    }
+    .msg-sender { font-size: 10.5px; font-weight: 700; color: var(--gold); margin-bottom: 3px; }
+    .msg-time { font-size: 10px; color: var(--muted); text-align: right; margin-top: 4px; }
+    .msg audio, .msg video { width: 100%; max-width: 240px; border-radius: 10px; margin-top: 5px; }
+
+    .chat-controls { display: flex; gap: 6px; align-items: center; }
+    .chat-input {
+      flex: 1; background: var(--surface-elevated); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 12px; color: var(--text); font-size: 13px;
+    }
+    .media-btn {
+      width: 40px; height: 40px; border-radius: 11px;
+      background: var(--surface-elevated); border: 1px solid var(--border);
+      color: var(--gold); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .media-btn.recording {
+      background: rgba(255, 69, 58, 0.22); border-color: var(--danger);
+      color: var(--danger); animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+    /* Forms & Modals */
+    .field { margin-bottom: 11px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+    .input, .select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 11px; padding: 10px 12px; color: var(--text); font-size: 13.5px;
+    }
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78);
+      z-index: 100; display: none; align-items: flex-end; justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-sheet {
+      width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto;
+      background: var(--surface); border-top: 1.5px solid var(--gold-border);
+      border-radius: 22px 22px 0 0; padding: 18px 16px 28px;
+    }
+
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      background: rgba(15, 15, 19, 0.96);
+      backdrop-filter: blur(14px);
+      border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      padding: 6px 4px 10px;
+    }
+    .nav-item {
+      background: none; border: none; color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      font-size: 10.5px; font-weight: 600; cursor: pointer; position: relative;
+    }
+    .nav-item.active { color: var(--gold); }
+    .nav-icon { font-size: 18px; }
+    .chat-unread-dot {
+      position: absolute; top: 0; right: 24%;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--gold); display: none;
+    }
+    .chat-unread-dot.show { display: block; }
+
+    .toast {
+      position: fixed; bottom: 82px; left: 50%; transform: translateX(-50%);
+      background: #1F1D18; color: var(--gold); border: 1px solid var(--gold-border);
+      padding: 9px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 600;
+      z-index: 120; display: none; white-space: nowrap;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .toast.show { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo-box">M</div>
+      <div>
+        <div class="brand-title">
+          <span>MyNotes</span>
+          <span class="group-pill" id="topGroupBadge">KI_25-03</span>
+        </div>
+        <div class="sync-status" id="syncStatusLabel">
+          <span class="dot" id="syncDot"></span>
+          <span id="syncText">Bulut aloqasi: Faol</span>
+        </div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="install-btn" id="installAppBtn" onclick="triggerInstallApp()">⬇ Ilovani o‘rnatish</button>
+      <button class="bell-btn" onclick="switchTab('tasks')" title="Eslatmalar">
+        🔔<span class="bell-badge" id="topReminderBadge">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- In-App 3-Stage Task Alarm Banner (Strictly Tasks/Classes ONLY, never Chat) -->
+  <div class="alarm-banner" id="alarmBanner">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:11px;font-weight:800;color:var(--gold);" id="alarmStageLabel">1/3-BOSQICH • 30 DAQIQA QOLDI</span>
+      <span style="font-size:11px;color:var(--muted);" id="alarmTimeLabel"></span>
+    </div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px;" id="alarmTitle">Vazifa nomi</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;" id="alarmBody">Tafsilotlar</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      <button class="btn-primary btn-sm" onclick="handleAlarmAction('COMPLETE')">✓ Bajarildi</button>
+      <button class="btn-secondary btn-sm" onclick="handleAlarmAction('POSTPONE')">+30 daq</button>
+      <button class="btn-secondary btn-sm" onclick="handleAlarmAction('ACK')">Qabul qildim</button>
+    </div>
+  </div>
+
+  <main class="container">
+
+    <!-- 1. BOSH SAHIFA (DASHBOARD) -->
+    <section class="section active" id="sec-home">
+      <div class="card gold-border">
+        <div class="hero-row">
+          <div>
+            <div class="date-chip" id="todayDateChip">Bugungi kun</div>
+            <h1 class="hero-h1" id="greetingTitle">Salom, Qaxa!</h1>
+            <p class="hero-desc" id="heroSummaryText">
+              Vazifa va eslatmalar 0 ta. O‘zingiz yaratgan vazifalar boshlanishidan -30, -20 va -10 daqiqa oldin eslatiladi.
+            </p>
+          </div>
+          <div class="ring-wrap">
+            <svg width="74" height="74" viewBox="0 0 74 74">
+              <circle cx="37" cy="37" r="30" fill="none" stroke="#282832" stroke-width="6"></circle>
+              <circle id="progressRingCircle" cx="37" cy="37" r="30" fill="none" stroke="#D4AF37" stroke-width="6"
+                stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"
+                transform="rotate(-90 37 37)"></circle>
+            </svg>
+            <div class="ring-text">
+              <span class="ring-pct" id="progressPctText">0%</span>
+              <span class="ring-lbl">HOLAT</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-btns">
+          <button class="btn-primary" onclick="openTaskModal()">+ Vazifa qo‘shish</button>
+          <button class="btn-secondary" onclick="switchTab('chat')">🔒 Maxfiy Chat</button>
+        </div>
+      </div>
+
+      <!-- Bugungi dars jadvali -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title" id="homeScheduleTitle">Bugungi dars jadvali</div>
+            <div class="card-sub">KI_25-03 va KI_25-05 guruhlari alohida saqlanadi</div>
+          </div>
+          <button class="btn-secondary btn-sm" onclick="switchTab('schedule')">To‘liq jadval →</button>
+        </div>
+        <div class="segment-bar">
+          <button class="segment-btn active" id="homeGrp03" onclick="selectActiveGroup('KI_25-03')">KI_25-03</button>
+          <button class="segment-btn" id="homeGrp05" onclick="selectActiveGroup('KI_25-05')">KI_25-05</button>
+        </div>
+        <div id="homeTodayClassesList"></div>
+      </div>
+
+      <!-- Bugungi shaxsiy vazifalar -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Shaxsiy vazifalar va eslatmalar</div>
+            <div class="card-sub">Siz qo‘shgan va boshqaradigan vazifalar</div>
+          </div>
+          <button class="btn-secondary btn-sm" onclick="openTaskModal()">+ Qo‘shish</button>
+        </div>
+        <div id="homeTasksList"></div>
+      </div>
+    </section>
+
+    <!-- 2. VAZIFALAR VA 3-BOSQICHLI ESLATMALAR -->
+    <section class="section" id="sec-tasks">
+      <div class="card gold-border">
+        <div class="card-header">
+          <div>
+            <div class="card-title">3 bosqichli 10 daqiqalik eslatmalar dvigateli</div>
+            <div class="card-sub">Har bir vaqtli vazifa uchun -30, -20 va -10 daq oldin ogohlantirish</div>
+          </div>
+          <button class="btn-secondary btn-sm" onclick="sendTestTaskReminder()">🔔 Sinov</button>
+        </div>
+        <button class="btn-primary" style="width:100%;" onclick="openTaskModal()">+ Yangi vazifa va eslatma yaratish</button>
+      </div>
+      <div id="allTasksList"></div>
+    </section>
+
+    <!-- 3. UNIVERSITET JADVALI (KI_25-03 VA KI_25-05 ALOHIDA) -->
+    <section class="section" id="sec-schedule">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Haftalik universitet dars jadvali</div>
+            <div class="card-sub">Ikkala guruh jadvali bir-biridan mustaqil</div>
+          </div>
+          <button class="btn-secondary btn-sm" onclick="openClassModal()">+ Dars</button>
+        </div>
+        <div class="segment-bar">
+          <button class="segment-btn active" id="schGrp03" onclick="selectActiveGroup('KI_25-03')">KI_25-03</button>
+          <button class="segment-btn" id="schGrp05" onclick="selectActiveGroup('KI_25-05')">KI_25-05</button>
+        </div>
+        <div class="day-pills" id="scheduleDayPills"></div>
+        <div id="fullScheduleList"></div>
+      </div>
+    </section>
+
+    <!-- 4. ZERO-PUSH MAXFIY CHAT (FAQAT GMAIL DOSTUP BERILGANLAR UCHUN) -->
+    <section class="section" id="sec-chat">
+      <!-- Kirish / Gmail Dostup tekshiruvi -->
+      <div class="card gold-border" id="chatAuthCard">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔒 Zero-Push Maxfiy Chat</div>
+            <div class="card-sub">Tashqi telefon bildirishnomasi chiqmaydi — faqat ilovaga kirganda ko‘rinadi</div>
+          </div>
+        </div>
+        <div id="chatIdentityBar" style="margin-bottom:10px;"></div>
+        <div id="chatGuestLoginBox" style="display:none;">
+          <div class="field">
+            <label>Sizga dostup berilgan Google Gmail manzilingizni kiriting</label>
+            <input class="input" id="guestGmailInput" type="email" placeholder="ismingiz@gmail.com" />
+          </div>
+          <div class="field">
+            <label>Maxfiy kirish kodi (masalan: QAXA-XXXX)</label>
+            <input class="input" id="guestCodeInput" type="text" placeholder="QAXA-1234" />
+          </div>
+          <button class="btn-primary" style="width:100%;" onclick="verifyGuestAccess()">Gmail Dostupni tasdiqlash</button>
+        </div>
+      </div>
+
+      <!-- Faol suhbat oynasi -->
+      <div class="card" id="chatRoomCard">
+        <div class="card-header">
+          <div>
+            <div class="card-title" id="activeChatPeerTitle">Suhbatdosh tanlang</div>
+            <div class="card-sub">Matn, ovozli (🎙) va video (🎥) xabarlar • Zero-Push rejim</div>
+          </div>
+          <select class="select" id="chatPeerSelector" style="width:auto;padding:6px 10px;font-size:12px;" onchange="selectChatPeer(this.value)"></select>
+        </div>
+
+        <div class="chat-box" id="chatMessagesBox"></div>
+
+        <div id="recordingIndicator" style="display:none;color:var(--danger);font-size:12px;font-weight:700;margin-bottom:6px;">
+          ● Yozib olinmoqda... To‘xtatish va yuborish uchun tugmani yana bosing.
+        </div>
+
+        <div class="chat-controls">
+          <button class="media-btn" id="voiceRecBtn" onclick="toggleVoiceRecording()" title="Ovozli xabar">🎙</button>
+          <button class="media-btn" id="videoRecBtn" onclick="triggerVideoPicker()" title="Video xabar">🎥</button>
+          <input type="file" id="videoFileInput" accept="video/*" capture="user" style="display:none;" onchange="handleVideoSelected(event)" />
+          <input class="chat-input" id="chatTextInput" placeholder="Maxfiy xabar yozing..." onkeydown="if(event.key==='Enter') sendTextMessage()" />
+          <button class="btn-primary btn-sm" onclick="sendTextMessage()">Yuborish</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. SOZLAMALAR VA GOOGLE GMAIL DOSTUP BOSHQARUVI -->
+    <section class="section" id="sec-settings">
+      <div class="card gold-border">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Google Gmail orqali Dostup berish</div>
+            <div class="card-sub">Faqat siz ruxsat bergan Gmail egalari chatga kiradi va siz belgilagan vazifalarni boshqaradi</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Odamning ismi</label>
+          <input class="input" id="newAccessName" placeholder="Masalan: Abdumalik" />
+        </div>
+        <div class="field">
+          <label>Google Gmail manzili</label>
+          <input class="input" id="newAccessGmail" type="email" placeholder="abdumalik@gmail.com" />
+        </div>
+        <button class="btn-primary" style="width:100%;" onclick="grantGmailAccess()">+ Gmail Dostup yaratish</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Dostup berilgan Gmail foydalanuvchilar</div>
+        </div>
+        <div id="accessUsersList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Mobil ilova sifatida o‘rnatish va Zaxira</div>
+            <div class="card-sub">Chrome orqali Android ekraniga o‘rnatish va JSON zaxira</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button class="btn-primary" onclick="triggerInstallApp()">📲 Ilovani o‘rnatish</button>
+          <button class="btn-secondary" onclick="exportBackupJson()">💾 JSON zaxira</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Navigation Bar -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
+      <span class="nav-icon">🏠</span><span>Asosiy</span>
+    </button>
+    <button class="nav-item" id="nav-tasks" onclick="switchTab('tasks')">
+      <span class="nav-icon">✅</span><span>Vazifalar</span>
+    </button>
+    <button class="nav-item" id="nav-schedule" onclick="switchTab('schedule')">
+      <span class="nav-icon">🗓</span><span>Jadval</span>
+    </button>
+    <button class="nav-item" id="nav-chat" onclick="switchTab('chat')">
+      <span class="chat-unread-dot" id="chatUnreadDot"></span>
+      <span class="nav-icon">🔒</span><span>Chat</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+      <span class="nav-icon">⚙️</span><span>Dostup</span>
+    </button>
+  </nav>
+
+  <!-- Modal: Add/Edit Task -->
+  <div class="modal-backdrop" id="taskModal">
+    <div class="modal-sheet">
+      <div class="card-header">
+        <div class="card-title" id="taskModalTitle">Yangi vazifa qo‘shish</div>
+        <button class="btn-secondary btn-sm" onclick="closeModal('taskModal')">✕</button>
+      </div>
+      <input type="hidden" id="editTaskId" />
+      <div class="field">
+        <label>Vazifa nomi *</label>
+        <input class="input" id="taskTitleInput" placeholder="Masalan: Algoritmlar laboratoriya topshirig‘i" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field">
+          <label>Sana</label>
+          <input class="input" id="taskDateInput" type="date" />
+        </div>
+        <div class="field">
+          <label>Boshlanish vaqti (3-bosqichli eslatma)</label>
+          <input class="input" id="taskTimeInput" type="time" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Izoh / Tavsif</label>
+        <input class="input" id="taskDescInput" placeholder="Qo‘shimcha ma’lumot..." />
+      </div>
+      <div class="field">
+        <label>Gmail Dostup bilan boshqarishga ruxsat berish (belgilangan odamlar)</label>
+        <div id="taskSharedGmailsBox" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="saveTask()">Saqlash</button>
+    </div>
+  </div>
+
+  <!-- Modal: Add University Class -->
+  <div class="modal-backdrop" id="classModal">
+    <div class="modal-sheet">
+      <div class="card-header">
+        <div class="card-title">Dars qo‘shish (<span id="modalGroupLabel">KI_25-03</span>)</div>
+        <button class="btn-secondary btn-sm" onclick="closeModal('classModal')">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field">
+          <label>Hafta kuni</label>
+          <select class="select" id="clsDayInput">
+            <option value="1">Dushanba</option>
+            <option value="2">Seshanba</option>
+            <option value="3">Chorshanba</option>
+            <option value="4">Payshanba</option>
+            <option value="5">Juma</option>
+            <option value="6">Shanba</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Juftlik raqami</label>
+          <input class="input" id="clsPairInput" type="number" min="1" max="7" value="4" />
+        </div>
+      </div>
+      <div class="field">
+        <label>Fan nomi *</label>
+        <input class="input" id="clsSubjectInput" placeholder="Fan nomi" />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field">
+          <label>Vaqt oralig‘i</label>
+          <input class="input" id="clsTimeInput" placeholder="13:30-14:50" />
+        </div>
+        <div class="field">
+          <label>Dars turi</label>
+          <select class="select" id="clsTypeInput">
+            <option value="ma'ruza">ma'ruza</option>
+            <option value="amaliy">amaliy</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field">
+          <label>O‘qituvchi</label>
+          <input class="input" id="clsTeacherInput" placeholder="F.I.Sh" />
+        </div>
+        <div class="field">
+          <label>Xona va bino</label>
+          <input class="input" id="clsRoomInput" placeholder="112-xona A bino" />
+        </div>
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="saveUniversityClass()">Jadvalga qo‘shish</button>
+    </div>
+  </div>
+
+  <!-- Modal: Install Guide -->
+  <div class="modal-backdrop" id="installGuideModal">
+    <div class="modal-sheet">
+      <div class="card-header">
+        <div class="card-title">📲 Mobil ilova sifatida o‘rnatish</div>
+        <button class="btn-secondary btn-sm" onclick="closeModal('installGuideModal')">✕</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:12px;">
+        Agar hozir saytni <b>https://</b> domenida (GitHub Pages yoki Netlify) ochgan bo‘lsangiz, Chrome menyusidan (<b>⋮</b>) <b>«Ilovani o‘rnatish»</b> tugmasini bosing.
+      </p>
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:12px;color:var(--text);line-height:1.55;margin-bottom:12px;">
+        <b>1.</b> Papkadagi 3 ta faylni (<code>index.html</code>, <code>manifest.json</code>, <code>sw.js</code>) bepul <b>Netlify Drop</b> (<code>app.netlify.com/drop</code>) yoki <b>GitHub Pages</b> ga yuklang.<br/>
+        <b>2.</b> Berilgan <code>https://...</code> havolani telefondagi <b>Google Chrome</b> da oching.<br/>
+        <b>3.</b> Chrome’da <b>«O‘rnatish»</b> tugmasi yonadi va telefon ekraniga oltin <b>M</b> ikonkali ilova o‘rnatiladi!
+      </div>
+      <button class="btn-primary" style="width:100%;" onclick="closeModal('installGuideModal')">Tushunarli</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toastBox"></div>
+
+  <script>
+    // =========================================================================
+    // 1. DEFAULT SEPARATE SCHEDULES (KI_25-03 & KI_25-05)
+    // =========================================================================
+    const DEFAULT_SCHEDULES = {
+      "KI_25-03": {
+        1: [
+          { id: "03-1-4", pair: 4, time: "13:30-14:50", subject: "Grafik foydalanuvchi interfeysli dasturlash", type: "ma'ruza", teacher: "Maxmudov Muhammadxon", room: "112-xona A bino" },
+          { id: "03-1-5", pair: 5, time: "15:00-16:20", subject: "Obyektga yo'naltirilgan dasturlash", type: "amaliy", teacher: "Olimov Muslimbek", room: "116-xona A bino" }
+        ],
+        2: [
+          { id: "03-2-3", pair: 3, time: "12:00-13:20", subject: "Grafik foydalanuvchi interfeysli dasturlash", type: "amaliy", teacher: "Maxmudov Muhammadxon", room: "116-xona A bino" },
+          { id: "03-2-4", pair: 4, time: "13:30-14:50", subject: "Web dasturlashga kirish", type: "ma'ruza", teacher: "Olimov Muslimbek", room: "112-xona A bino" }
+        ],
+        3: [
+          { id: "03-3-3", pair: 3, time: "12:00-13:20", subject: "Xorijiy til", type: "amaliy", teacher: "Maxmdudov Islombek", room: "610-xona A bino" },
+          { id: "03-3-4", pair: 4, time: "13:30-14:50", subject: "Chiziqli algebra va differensial tenglamalar", type: "ma'ruza", teacher: "Xalilov Murodil", room: "112-xona A bino" },
+          { id: "03-3-5", pair: 5, time: "15:00-16:20", subject: "Elektronika sxemotexnika", type: "amaliy", teacher: "Oqilov Azizbek", room: "525-xona A bino" }
+        ],
+        4: [
+          { id: "03-4-2", pair: 2, time: "10:00-11:20", subject: "Xorijiy til", type: "amaliy", teacher: "Maxmdudov Islombek", room: "301-xona A bino" },
+          { id: "03-4-3", pair: 3, time: "12:00-13:20", subject: "Elektronika sxemotexnika", type: "ma'ruza", teacher: "Asranov Xabibullo", room: "207-xona A bino" },
+          { id: "03-4-4", pair: 4, time: "13:30-14:50", subject: "Chiziqli algebra va differensial tenglamalar", type: "amaliy", teacher: "Komiljonov Bobirjon", room: "310-xona A bino" }
+        ],
+        5: [
+          { id: "03-5-4", pair: 4, time: "13:30-14:50", subject: "Obyektga yo'naltirilgan dasturlash", type: "ma'ruza", teacher: "Sodiqjonov Jaxongir", room: "112-xona A bino" },
+          { id: "03-5-5", pair: 5, time: "15:00-16:20", subject: "Web dasturlashga kirish", type: "amaliy", teacher: "Olimov Muslimbek", room: "116-xona A bino" }
+        ],
+        6: []
+      },
+      "KI_25-05": {
+        1: [
+          { id: "05-1-3", pair: 3, time: "12:00-13:20", subject: "Obyektga yo'naltirilgan dasturlash", type: "Ma'ruza", teacher: "OLIMOV M. U.", room: "A.303-xona" },
+          { id: "05-1-4", pair: 4, time: "13:30-14:50", subject: "Xorijiy til", type: "Amaliy", teacher: "AHMEDOVA A. M.", room: "A.208-xona" },
+          { id: "05-1-5", pair: 5, time: "15:00-16:20", subject: "Grafik foydalanuvchi interfeysli dasturlash", type: "Ma'ruza", teacher: "MAHMUDOV M. N.", room: "A.104-xona" }
+        ],
+        2: [
+          { id: "05-2-4", pair: 4, time: "13:30-14:50", subject: "Obyektga yo'naltirilgan dasturlash", type: "Amaliy", teacher: "MAHMUDOV M. N.", room: "A.116/1-xona" },
+          { id: "05-2-5", pair: 5, time: "15:00-16:20", subject: "Chiziqli algebra va differensial tenglamalar", type: "Amaliy", teacher: "KOMILJONOV B. K.", room: "A.116/1-xona" }
+        ],
+        3: [
+          { id: "05-3-3", pair: 3, time: "12:00-13:20", subject: "Grafik foydalanuvchi interfeysli dasturlash", type: "Amaliy", teacher: "MAHMUDOV M. N.", room: "A.312-xona" },
+          { id: "05-3-4", pair: 4, time: "13:30-14:50", subject: "Web dasturlashga kirish", type: "Ma'ruza", teacher: "OLIMOV M. U.", room: "A.102-xona" },
+          { id: "05-3-5", pair: 5, time: "15:00-16:20", subject: "Xorijiy til", type: "Amaliy", teacher: "AHMEDOVA A. M.", room: "A.304-xona" }
+        ],
+        4: [
+          { id: "05-4-4", pair: 4, time: "13:30-14:50", subject: "Chiziqli algebra va differensial tenglamalar", type: "Ma'ruza", teacher: "XALILOV M. D.", room: "A.207-xona" },
+          { id: "05-4-5", pair: 5, time: "15:00-16:20", subject: "Web dasturlashga kirish", type: "Amaliy", teacher: "OLIMOV M. U.", room: "A.116/2-xona" }
+        ],
+        5: [
+          { id: "05-5-4", pair: 4, time: "13:30-14:50", subject: "Elektronika va sxemotexnika", type: "Amaliy", teacher: "OQILOV A. K.", room: "A.310-xona" },
+          { id: "05-5-5", pair: 5, time: "15:00-16:20", subject: "Elektronika va sxemotexnika", type: "Ma'ruza", teacher: "OQILOV A. K.", room: "A.103-xona" }
+        ],
+        6: []
+      }
+    };
+
+    const DAY_NAMES = { 1: "Dushanba", 2: "Seshanba", 3: "Chorshanba", 4: "Payshanba", 5: "Juma", 6: "Shanba", 7: "Yakshanba" };
+    const STORAGE_KEY = "mynotes_qaxa_v4_state";
+    const CLOUD_ROOM_ID = "mynotes_qaxa_private_mesh_v4_9921";
+
+    let appState = loadInitialState();
+    let selectedScheduleDay = getCurrentDayOfWeek();
+    let activeChatPeerGmail = "";
+    let activeAlarmContext = null;
+    let deferredInstallPrompt = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecordingVoice = false;
+
+    function loadInitialState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (!parsed.schedules) parsed.schedules = JSON.parse(JSON.stringify(DEFAULT_SCHEDULES));
+          if (!parsed.tasks) parsed.tasks = [];
+          if (!parsed.accessList) parsed.accessList = [];
+          if (!parsed.messages) parsed.messages = [];
+          return parsed;
+        } catch (e) {}
+      }
+      return {
+        role: "OWNER", // OWNER (Qaxa) or GUEST
+        currentGmail: "qaxa.owner@gmail.com",
+        currentName: "Qaxa",
+        activeGroup: "KI_25-03",
+        schedules: JSON.parse(JSON.stringify(DEFAULT_SCHEDULES)),
+        tasks: [], // Starts strictly empty (0 tasks) as requested
+        accessList: [], // { gmail, name, code, active, createdAt }
+        messages: [] // { id, roomKey, senderGmail, senderName, type: 'text'|'audio'|'video', content, mediaData, ts }
+      };
+    }
+
+    function persistState(syncCloud = true) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      if (syncCloud && gunMesh) {
+        try {
+          gunMesh.get("shared").put({
+            accessJson: JSON.stringify(appState.accessList),
+            tasksJson: JSON.stringify(appState.tasks),
+            updatedAt: Date.now()
+          });
+        } catch (e) {}
+      }
+    }
+
+    // =========================================================================
+    // 2. DECENTRALIZED REAL-TIME CLOUD MESH (2 PHONES OVER INTERNET)
+    // =========================================================================
+    let gunMesh = null;
+    try {
+      const gun = Gun([
+        "https://gun-manhattan.herokuapp.com/gun",
+        "https://peer.wallie.io/gun"
+      ]);
+      gunMesh = gun.get(CLOUD_ROOM_ID);
+
+      gunMesh.get("shared").on((data) => {
+        if (!data) return;
+        let changed = false;
+        if (data.accessJson) {
+          try {
+            const remoteAccess = JSON.parse(data.accessJson);
+            if (Array.isArray(remoteAccess)) {
+              appState.accessList = remoteAccess;
+              changed = true;
+            }
+          } catch (e) {}
+        }
+        if (data.tasksJson) {
+          try {
+            const remoteTasks = JSON.parse(data.tasksJson);
+            if (Array.isArray(remoteTasks)) {
+              appState.tasks = remoteTasks;
+              changed = true;
+            }
+          } catch (e) {}
+        }
+        if (changed) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+          renderAll();
+        }
+      });
+
+      gunMesh.get("chat_msgs").map().on((msg, id) => {
+        if (!msg || !msg.id || !msg.roomKey) return;
+        if (!appState.messages.some(m => m.id === msg.id)) {
+          appState.messages.push({
+            id: msg.id,
+            roomKey: msg.roomKey,
+            senderGmail: msg.senderGmail,
+            senderName: msg.senderName,
+            type: msg.type,
+            content: msg.content || "",
+            mediaData: msg.mediaData || "",
+            ts: msg.ts || Date.now()
+          });
+          appState.messages.sort((a, b) => a.ts - b.ts);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+
+          // ZERO-PUSH RULE: Never fire system Notification for chat!
+          // Only show subtle in-app indicator if user is currently inside the app
+          const chatTabActive = document.getElementById("sec-chat").classList.contains("active");
+          if (chatTabActive) {
+            renderChatMessages();
+          } else {
+            document.getElementById("chatUnreadDot").classList.add("show");
+          }
+        }
+      });
+    } catch (e) {
+      document.getElementById("syncText").textContent = "Oflayn rejim";
+      document.getElementById("syncDot").classList.add("offline");
+    }
+
+    // Check URL Magic Invite Link (?invite=CODE&gmail=...)
+    (function handleInviteParams() {
+      const params = new URLSearchParams(window.location.search);
+      const inviteCode = params.get("invite");
+      const inviteGmail = params.get("gmail");
+      if (inviteCode && inviteGmail) {
+        appState.role = "GUEST";
+        appState.currentGmail = inviteGmail.trim().toLowerCase();
+        persistState(false);
+        setTimeout(() => {
+          switchTab("chat");
+          document.getElementById("guestGmailInput").value = inviteGmail;
+          document.getElementById("guestCodeInput").value = inviteCode;
+        }, 200);
+      }
+    })();
+
+    // =========================================================================
+    // 3. PWA INSTALL & SERVICE WORKER
+    // =========================================================================
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const btn = document.getElementById("installAppBtn");
+      btn.classList.add("ready");
+      btn.textContent = "📲 O‘rnatish";
+    });
+
+    async function triggerInstallApp() {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice.outcome === "accepted") {
+          showToast("MyNotes telefoningizga o‘rnatilmoqda!");
+        }
+        deferredInstallPrompt = null;
+      } else {
+        document.getElementById("installGuideModal").classList.add("open");
+      }
+    }
+
+    // =========================================================================
+    // 4. NAVIGATION & GROUP SWITCHING
+    // =========================================================================
+    function switchTab(tab) {
+      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+      document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+      document.getElementById("sec-" + tab).classList.add("active");
+      document.getElementById("nav-" + tab).classList.add("active");
+
+      if (tab === "chat") {
+        document.getElementById("chatUnreadDot").classList.remove("show");
+        renderChatSection();
+      }
+      renderAll();
+    }
+
+    function selectActiveGroup(grp) {
+      appState.activeGroup = grp;
+      persistState(false);
+      renderAll();
+    }
+
+    function getCurrentDayOfWeek() {
+      const d = new Date().getDay(); // 0=Sun .. 6=Sat
+      return d === 0 ? 7 : d;
+    }
+
+    // =========================================================================
+    // 5. TASKS & 3-STAGE 10-MINUTE REMINDER ENGINE (-30, -20, -10 MIN)
+    // =========================================================================
+    function openTaskModal(taskId = null) {
+      const modal = document.getElementById("taskModal");
+      const todayStr = new Date().toISOString().split("T")[0];
+      document.getElementById("editTaskId").value = taskId || "";
+      document.getElementById("taskModalTitle").textContent = taskId ? "Vazifani tahrirlash" : "Yangi vazifa qo‘shish";
+
+      const existing = taskId ? appState.tasks.find(t => t.id === taskId) : null;
+      document.getElementById("taskTitleInput").value = existing ? existing.title : "";
+      document.getElementById("taskDateInput").value = existing ? existing.date : todayStr;
+      document.getElementById("taskTimeInput").value = existing ? existing.time : "";
+      document.getElementById("taskDescInput").value = existing ? existing.desc : "";
+
+      const sharedBox = document.getElementById("taskSharedGmailsBox");
+      const activeGuests = appState.accessList.filter(a => a.active);
+      if (activeGuests.length === 0) {
+        sharedBox.innerHTML = `<span style="font-size:11.5px;color:var(--muted);">Hali Gmail dostup berilmagan («Dostup» bo‘limidan qo‘shing)</span>`;
+      } else {
+        sharedBox.innerHTML = activeGuests.map(g => {
+          const checked = existing && Array.isArray(existing.sharedWith) && existing.sharedWith.includes(g.gmail);
+          return `<label style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);padding:5px 9px;border-radius:8px;font-size:12px;color:var(--text);">
+            <input type="checkbox" class="shared-gmail-chk" value="${g.gmail}" ${checked ? "checked" : ""} />
+            <span>${g.name} (${g.gmail})</span>
+          </label>`;
+        }).join("");
+      }
+
+      modal.classList.add("open");
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+
+    function saveTask() {
+      const id = document.getElementById("editTaskId").value;
+      const title = document.getElementById("taskTitleInput").value.trim();
+      const date = document.getElementById("taskDateInput").value;
+      const time = document.getElementById("taskTimeInput").value;
+      const desc = document.getElementById("taskDescInput").value.trim();
+
+      if (!title) {
+        showToast("Vazifa nomini kiriting!");
+        return;
+      }
+
+      const sharedWith = Array.from(document.querySelectorAll(".shared-gmail-chk:checked")).map(el => el.value);
+      const stages = computeThreeStages(date, time);
+
+      if (id) {
+        const idx = appState.tasks.findIndex(t => t.id === id);
+        if (idx >= 0) {
+          appState.tasks[idx] = {
+            ...appState.tasks[idx],
+            title, date, time, desc, sharedWith,
+            stages,
+            updatedAt: Date.now()
+          };
+        }
+      } else {
+        appState.tasks.unshift({
+          id: "task_" + Date.now(),
+          title,
+          date,
+          time,
+          desc,
+          completed: false,
+          sharedWith,
+          stages,
+          createdAt: Date.now()
+        });
+      }
+
+      persistState(true);
+      closeModal("taskModal");
+      renderAll();
+      showToast(time ? "Vazifa va 3 bosqichli eslatma saqlandi!" : "Vazifa saqlandi!");
+    }
+
+    function computeThreeStages(dateStr, timeStr) {
+      if (!dateStr || !timeStr) return [];
+      const startMs = new Date(`${dateStr}T${timeStr}:00`).getTime();
+      if (isNaN(startMs)) return [];
+      return [30, 20, 10].map((minsBefore, i) => {
+        const triggerMs = startMs - minsBefore * 60000;
+        const d = new Date(triggerMs);
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        return {
+          stage: i + 1,
+          minsBefore,
+          triggerMs,
+          label: `${hh}:${mm} (-${minsBefore}m)`,
+          fired: triggerMs <= Date.now(),
+          ack: false
+        };
+      });
+    }
+
+    function toggleTaskCompleted(taskId) {
+      const t = appState.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.completed = !t.completed;
+      persistState(true);
+      renderAll();
+      showToast(t.completed ? "Vazifa bajarildi deb belgilandi!" : "Vazifa qayta faollashtirildi.");
+    }
+
+    function postponeTask30Min(taskId) {
+      const t = appState.tasks.find(x => x.id === taskId);
+      if (!t) return;
+      if (t.date && t.time) {
+        const dt = new Date(`${t.date}T${t.time}:00`);
+        dt.setMinutes(dt.getMinutes() + 30);
+        t.date = dt.toISOString().split("T")[0];
+        t.time = `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+        t.stages = computeThreeStages(t.date, t.time);
+      }
+      persistState(true);
+      renderAll();
+      showToast("Vazifa +30 daqiqaga keyinga qoldirildi.");
+    }
+
+    function deleteTask(taskId) {
+      appState.tasks = appState.tasks.filter(t => t.id !== taskId);
+      persistState(true);
+      renderAll();
+      showToast("Vazifa o‘chirildi.");
+    }
+
+    // 3-Stage Background Ticker (Every 5s — Tasks ONLY, NEVER Chat)
+    setInterval(() => {
+      const now = Date.now();
+      let updated = false;
+      appState.tasks.forEach(task => {
+        if (task.completed || !Array.isArray(task.stages)) return;
+        task.stages.forEach(st => {
+          if (!st.fired && now >= st.triggerMs && now - st.triggerMs <= 120000) {
+            st.fired = true;
+            updated = true;
+            triggerTaskAlarmBanner(task, st);
+          }
+        });
+      });
+      if (updated) {
+        persistState(false);
+        renderAll();
+      }
+    }, 5000);
+
+    function triggerTaskAlarmBanner(task, stageObj) {
+      activeAlarmContext = { taskId: task.id, stage: stageObj.stage };
+      document.getElementById("alarmStageLabel").textContent = `${stageObj.stage}/3-BOSQICH • ${stageObj.minsBefore} DAQIQA QOLDI`;
+      document.getElementById("alarmTimeLabel").textContent = task.time || "";
+      document.getElementById("alarmTitle").textContent = task.title;
+      document.getElementById("alarmBody").textContent = task.desc || `Boshlanish vaqti: ${task.time}`;
+      document.getElementById("alarmBanner").classList.add("show");
+      playSoftGoldChime();
+
+      if ("Notification" in window && Notification.permission === "granted") {
+        try {
+          new Notification(`MyNotes • ${stageObj.stage}/3-bosqich`, {
+            body: `${task.title} (${stageObj.minsBefore} daqiqa qoldi)`
+          });
+        } catch (e) {}
+      }
+    }
+
+    function sendTestTaskReminder() {
+      triggerTaskAlarmBanner(
+        { id: "TEST", title: "Sinov vazifa eslatmasi", time: "Hozir", desc: "3 bosqichli 10 daqiqalik eslatma tizimi ishlamoqda!" },
+        { stage: 3, minsBefore: 10 }
+      );
+    }
+
+    function handleAlarmAction(action) {
+      document.getElementById("alarmBanner").classList.remove("show");
+      if (!activeAlarmContext || activeAlarmContext.taskId === "TEST") return;
+      const { taskId, stage } = activeAlarmContext;
+      if (action === "COMPLETE") {
+        toggleTaskCompleted(taskId);
+      } else if (action === "POSTPONE") {
+        postponeTask30Min(taskId);
+      } else if (action === "ACK") {
+        const t = appState.tasks.find(x => x.id === taskId);
+        const st = t?.stages?.find(s => s.stage === stage);
+        if (st) st.ack = true;
+        persistState(false);
+        showToast("Bosqich tasdiqlandi.");
+      }
+    }
+
+    function playSoftGoldChime() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.55);
+      } catch (e) {}
+    }
+
+    // =========================================================================
+    // 6. UNIVERSITY SCHEDULE MANAGEMENT (KI_25-03 & KI_25-05 SEPARATE)
+    // =========================================================================
+    function openClassModal() {
+      document.getElementById("modalGroupLabel").textContent = appState.activeGroup;
+      document.getElementById("clsDayInput").value = String(selectedScheduleDay <= 6 ? selectedScheduleDay : 1);
+      document.getElementById("classModal").classList.add("open");
+    }
+
+    function saveUniversityClass() {
+      const grp = appState.activeGroup;
+      const day = Number(document.getElementById("clsDayInput").value);
+      const pair = Number(document.getElementById("clsPairInput").value) || 1;
+      const subject = document.getElementById("clsSubjectInput").value.trim();
+      const time = document.getElementById("clsTimeInput").value.trim() || "13:30-14:50";
+      const type = document.getElementById("clsTypeInput").value;
+      const teacher = document.getElementById("clsTeacherInput").value.trim();
+      const room = document.getElementById("clsRoomInput").value.trim();
+
+      if (!subject) {
+        showToast("Fan nomini kiriting!");
+        return;
+      }
+
+      if (!appState.schedules[grp][day]) appState.schedules[grp][day] = [];
+      appState.schedules[grp][day].push({
+        id: "cls_" + Date.now(),
+        pair, time, subject, type, teacher, room
+      });
+      appState.schedules[grp][day].sort((a, b) => a.pair - b.pair);
+
+      persistState(false);
+      closeModal("classModal");
+      renderAll();
+      showToast(`${grp} jadvaliga dars qo‘shildi.`);
+    }
+
+    function deleteClassItem(day, id) {
+      const grp = appState.activeGroup;
+      appState.schedules[grp][day] = (appState.schedules[grp][day] || []).filter(c => c.id !== id);
+      persistState(false);
+      renderAll();
+      showToast("Dars jadvaldan o‘chirildi.");
+    }
+
+    // =========================================================================
+    // 7. GOOGLE GMAIL DOSTUP & ZERO-PUSH SECRET CHAT (TEXT + VOICE + VIDEO)
+    // =========================================================================
+    function grantGmailAccess() {
+      const name = document.getElementById("newAccessName").value.trim();
+      const gmail = document.getElementById("newAccessGmail").value.trim().toLowerCase();
+      if (!name || !gmail || !gmail.includes("@")) {
+        showToast("Ism va to‘g‘ri Gmail manzilini kiriting!");
+        return;
+      }
+      const code = "QAXA-" + Math.floor(1000 + Math.random() * 9000);
+      const existingIdx = appState.accessList.findIndex(a => a.gmail === gmail);
+      if (existingIdx >= 0) {
+        appState.accessList[existingIdx] = { ...appState.accessList[existingIdx], name, code, active: true };
+      } else {
+        appState.accessList.push({ gmail, name, code, active: true, createdAt: Date.now() });
+      }
+      document.getElementById("newAccessName").value = "";
+      document.getElementById("newAccessGmail").value = "";
+      persistState(true);
+      renderAll();
+      showToast(`${name} (${gmail}) uchun dostup berildi!`);
+    }
+
+    function toggleAccessActive(gmail) {
+      const item = appState.accessList.find(a => a.gmail === gmail);
+      if (!item) return;
+      item.active = !item.active;
+      persistState(true);
+      renderAll();
+      showToast(item.active ? "Dostup qayta ochildi." : "Dostup yopildi (bloklandi).");
+    }
+
+    function copyInviteLink(gmail) {
+      const item = appState.accessList.find(a => a.gmail === gmail);
+      if (!item) return;
+      const baseUrl = window.location.href.split("?")[0];
+      const link = `${baseUrl}?invite=${encodeURIComponent(item.code)}&gmail=${encodeURIComponent(item.gmail)}`;
+      navigator.clipboard?.writeText(link).catch(() => {});
+      showToast(`Havola va kod (${item.code}) nusxalandi!`);
+    }
+
+    function verifyGuestAccess() {
+      const gmail = document.getElementById("guestGmailInput").value.trim().toLowerCase();
+      const code = document.getElementById("guestCodeInput").value.trim().toUpperCase();
+      const record = appState.accessList.find(a => a.gmail === gmail && a.code === code && a.active);
+      if (!record) {
+        showToast("Xato: Sizga dostup berilmagan yoki dostup yopilgan!");
+        return;
+      }
+      appState.role = "GUEST";
+      appState.currentGmail = record.gmail;
+      appState.currentName = record.name;
+      persistState(false);
+      renderAll();
+      showToast(`Xush kelibsiz, ${record.name}! Maxfiy chat ochildi.`);
+    }
+
+    function switchBackToOwner() {
+      appState.role = "OWNER";
+      appState.currentGmail = "qaxa.owner@gmail.com";
+      appState.currentName = "Qaxa";
+      persistState(false);
+      renderAll();
+      showToast("Qaxa (Egasi) rejimiga qaytildi.");
+    }
+
+    function getChatRoomKey(peerGmail) {
+      const pair = ["qaxa.owner@gmail.com", peerGmail.toLowerCase()].sort();
+      return pair.join("__");
+    }
+
+    function selectChatPeer(gmail) {
+      activeChatPeerGmail = gmail;
+      renderChatMessages();
+    }
+
+    function publishChatMessage(msgObj) {
+      appState.messages.push(msgObj);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      if (gunMesh) {
+        try {
+          gunMesh.get("chat_msgs").get(msgObj.id).put(msgObj);
+        } catch (e) {}
+      }
+      renderChatMessages();
+    }
+
+    function sendTextMessage() {
+      const input = document.getElementById("chatTextInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      const peerGmail = appState.role === "OWNER" ? activeChatPeerGmail : appState.currentGmail;
+      if (!peerGmail) {
+        showToast("Avval dostup berilgan suhbatdoshni tanlang!");
+        return;
+      }
+
+      publishChatMessage({
+        id: "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        roomKey: getChatRoomKey(peerGmail),
+        senderGmail: appState.currentGmail,
+        senderName: appState.currentName,
+        type: "text",
+        content: text,
+        mediaData: "",
+        ts: Date.now()
+      });
+      input.value = "";
+    }
+
+    async function toggleVoiceRecording() {
+      const btn = document.getElementById("voiceRecBtn");
+      const indicator = document.getElementById("recordingIndicator");
+      const peerGmail = appState.role === "OWNER" ? activeChatPeerGmail : appState.currentGmail;
+      if (!peerGmail) {
+        showToast("Avval suhbatdoshni tanlang!");
+        return;
+      }
+
+      if (!isRecordingVoice) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          recordedChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+          mediaRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            const blob = new Blob(recordedChunks, { type: "audio/webm" });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              publishChatMessage({
+                id: "msg_" + Date.now(),
+                roomKey: getChatRoomKey(peerGmail),
+                senderGmail: appState.currentGmail,
+                senderName: appState.currentName,
+                type: "audio",
+                content: "🎙 Ovozli xabar",
+                mediaData: reader.result,
+                ts: Date.now()
+              });
+            };
+            reader.readAsDataURL(blob);
+          };
+          mediaRecorder.start();
+          isRecordingVoice = true;
+          btn.classList.add("recording");
+          indicator.style.display = "block";
+        } catch (err) {
+          showToast("Mikrofonga ruxsat berilmadi.");
+        }
+      } else {
+        mediaRecorder.stop();
+        isRecordingVoice = false;
+        btn.classList.remove("recording");
+        indicator.style.display = "none";
+      }
+    }
+
+    function triggerVideoPicker() {
+      const peerGmail = appState.role === "OWNER" ? activeChatPeerGmail : appState.currentGmail;
+      if (!peerGmail) {
+        showToast("Avval suhbatdoshni tanlang!");
+        return;
+      }
+      document.getElementById("videoFileInput").click();
+    }
+
+    function handleVideoSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        showToast("Video hajmi 8 MB dan kichik bo‘lishi kerak.");
+        return;
+      }
+      const peerGmail = appState.role === "OWNER" ? activeChatPeerGmail : appState.currentGmail;
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        publishChatMessage({
+          id: "msg_" + Date.now(),
+          roomKey: getChatRoomKey(peerGmail),
+          senderGmail: appState.currentGmail,
+          senderName: appState.currentName,
+          type: "video",
+          content: "🎥 Video xabar",
+          mediaData: reader.result,
+          ts: Date.now()
+        });
+      };
+      reader.readAsDataURL(file);
+      event.target.value = "";
+    }
+
+    // =========================================================================
+    // 8. RENDERING FUNCTIONS
+    // =========================================================================
+    function renderAll() {
+      const grp = appState.activeGroup;
+      document.getElementById("topGroupBadge").textContent = grp;
+      ["homeGrp03", "schGrp03"].forEach(id => document.getElementById(id).classList.toggle("active", grp === "KI_25-03"));
+      ["homeGrp05", "schGrp05"].forEach(id => document.getElementById(id).classList.toggle("active", grp === "KI_25-05"));
+
+      const now = new Date();
+      const dow = getCurrentDayOfWeek();
+      document.getElementById("todayDateChip").textContent = `${DAY_NAMES[dow]}, ${now.toLocaleDateString("uz-UZ")}`;
+      document.getElementById("greetingTitle").textContent = appState.role === "OWNER" ? "Salom, Qaxa!" : `Salom, ${appState.currentName}!`;
+
+      // Filter visible tasks based on role
+      const visibleTasks = getVisibleTasks();
+      const total = visibleTasks.length;
+      const done = visibleTasks.filter(t => t.completed).length;
+      const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+      document.getElementById("progressPctText").textContent = `${pct}%`;
+      const offset = 188.5 - (188.5 * pct) / 100;
+      document.getElementById("progressRingCircle").style.strokeDashoffset = offset;
+      document.getElementById("topReminderBadge").textContent = visibleTasks.filter(t => !t.completed && t.time).length;
+      document.getElementById("heroSummaryText").textContent = total === 0
+        ? "Vazifa va eslatmalar 0 ta. O‘zingiz yaratgan vazifalar -30, -20 va -10 daq oldin eslatiladi."
+        : `Jami ${total} ta vazifadan ${done} tasi bajarilgan (${pct}%).`;
+
+      renderHomeSchedule(dow);
+      renderTasksLists(visibleTasks);
+      renderFullSchedule();
+      renderAccessUsersList();
+      renderChatSection();
+    }
+
+    function getVisibleTasks() {
+      if (appState.role === "OWNER") return appState.tasks;
+      return appState.tasks.filter(t => Array.isArray(t.sharedWith) && t.sharedWith.includes(appState.currentGmail));
+    }
+
+    function renderHomeSchedule(dow) {
+      const grp = appState.activeGroup;
+      document.getElementById("homeScheduleTitle").textContent = `Bugungi jadval (${DAY_NAMES[dow]})`;
+      const classes = (appState.schedules[grp] && appState.schedules[grp][dow]) || [];
+      const container = document.getElementById("homeTodayClassesList");
+
+      if (classes.length === 0) {
+        container.innerHTML = `<div style="font-size:12.5px;color:var(--muted);padding:10px 0;">${grp} guruhi uchun ${DAY_NAMES[dow]} kuni dars yo‘q.</div>`;
+        return;
+      }
+      container.innerHTML = classes.map(c => renderClassHtml(c, dow, false)).join("");
+    }
+
+    function renderFullSchedule() {
+      const pills = document.getElementById("scheduleDayPills");
+      pills.innerHTML = [1, 2, 3, 4, 5, 6].map(d =>
+        `<button class="day-pill ${selectedScheduleDay === d ? "active" : ""}" onclick="selectedScheduleDay=${d};renderFullSchedule()">${DAY_NAMES[d]}</button>`
+      ).join("");
+
+      const grp = appState.activeGroup;
+      const day = selectedScheduleDay <= 6 ? selectedScheduleDay : 1;
+      const classes = (appState.schedules[grp] && appState.schedules[grp][day]) || [];
+      const container = document.getElementById("fullScheduleList");
+
+      if (classes.length === 0) {
+        container.innerHTML = `<div style="font-size:13px;color:var(--muted);padding:14px 0;text-align:center;">${grp} — ${DAY_NAMES[day]} kuni dars kiritilmagan.</div>`;
+        return;
+      }
+      container.innerHTML = classes.map(c => renderClassHtml(c, day, true)).join("");
+    }
+
+    function renderClassHtml(c, day, allowDelete) {
+      return `<div class="class-item">
+        <div class="class-top">
+          <span class="pair-badge">${c.pair}-juftlik • ${c.time}</span>
+          <span class="type-badge">${c.type}</span>
+        </div>
+        <div class="class-name">${c.subject}</div>
+        <div class="class-meta">
+          <span>👨‍🏫 ${c.teacher || "—"}</span>
+          <span>🚪 ${c.room || "—"}</span>
+          ${allowDelete ? `<span style="margin-left:auto;color:var(--danger);cursor:pointer;" onclick="deleteClassItem(${day}, '${c.id}')">O‘chirish</span>` : ""}
+        </div>
+      </div>`;
+    }
+
+    function renderTasksLists(tasks) {
+      const emptyHtml = `<div style="font-size:12.5px;color:var(--muted);padding:10px 0;text-align:center;">Hozircha vazifalar 0 ta. Yuqoridagi tugma orqali o‘zingiz qo‘shing.</div>`;
+      const html = tasks.length === 0 ? emptyHtml : tasks.map(t => {
+        const stagesHtml = (t.stages || []).map(s =>
+          `<span class="stage-chip ${s.fired ? "fired" : ""}">${s.stage}-bosqich: ${s.label}</span>`
+        ).join("");
+        const sharedCount = Array.isArray(t.sharedWith) ? t.sharedWith.length : 0;
+
+        return `<div class="task-item ${t.completed ? "completed" : ""}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div>
+              <div style="font-weight:700;font-size:14px;text-decoration:${t.completed ? "line-through" : "none"};">${t.title}</div>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:3px;">
+                📅 ${t.date || "Sanasiz"} ${t.time ? "• ⏰ " + t.time : ""} ${sharedCount > 0 ? `• 👥 ${sharedCount} Gmail` : ""}
+              </div>
+              ${t.desc ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${t.desc}</div>` : ""}
+            </div>
+            <button class="${t.completed ? "btn-secondary" : "btn-primary"} btn-sm" onclick="toggleTaskCompleted('${t.id}')">
+              ${t.completed ? "✓ Bajarilgan" : "Bajarildi"}
+            </button>
+          </div>
+          ${stagesHtml ? `<div class="stage-chips">${stagesHtml}</div>` : ""}
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            ${t.time && !t.completed ? `<button class="btn-secondary btn-sm" onclick="postponeTask30Min('${t.id}')">+30 daq</button>` : ""}
+            ${appState.role === "OWNER" ? `<button class="btn-secondary btn-sm" onclick="openTaskModal('${t.id}')">Tahrirlash</button>` : ""}
+            ${appState.role === "OWNER" ? `<button class="btn-danger btn-sm" onclick="deleteTask('${t.id}')">O‘chirish</button>` : ""}
+          </div>
+        </div>`;
+      }).join("");
+
+      document.getElementById("homeTasksList").innerHTML = html;
+      document.getElementById("allTasksList").innerHTML = html;
+    }
+
+    function renderAccessUsersList() {
+      const box = document.getElementById("accessUsersList");
+      if (appState.accessList.length === 0) {
+        box.innerHTML = `<div style="font-size:12.5px;color:var(--muted);">Hali hech kimga Gmail dostup berilmagan.</div>`;
+        return;
+      }
+      box.innerHTML = appState.accessList.map(a => `
+        <div class="task-item">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:700;font-size:14px;">${a.name}</div>
+              <div style="font-size:12px;color:var(--gold);">${a.gmail}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;">Kod: <b>${a.code}</b> • Holat: ${a.active ? "Faol" : "Bloklangan"}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <button class="btn-secondary btn-sm" onclick="copyInviteLink('${a.gmail}')">Havola nusxalash</button>
+              <button class="btn-danger btn-sm" onclick="toggleAccessActive('${a.gmail}')">${a.active ? "Dostupni yopish" : "Qayta ochish"}</button>
+            </div>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderChatSection() {
+      const idBar = document.getElementById("chatIdentityBar");
+      const guestLoginBox = document.getElementById("chatGuestLoginBox");
+      const chatRoomCard = document.getElementById("chatRoomCard");
+      const selector = document.getElementById("chatPeerSelector");
+
+      if (appState.role === "OWNER") {
+        idBar.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+          <span>Siz: <b style="color:var(--gold);">Qaxa (Ilova egasi)</b></span>
+          <button class="btn-secondary btn-sm" onclick="document.getElementById('guestLoginBoxToggle').style.display='block'">Mehmon kirishini sinash</button>
+        </div>
+        <div id="guestLoginBoxToggle" style="display:none;margin-top:10px;">
+          <div class="field"><label>Mehmon Gmail</label><input class="input" id="guestGmailInput" placeholder="gmail@gmail.com" /></div>
+          <div class="field"><label>Kod</label><input class="input" id="guestCodeInput" placeholder="QAXA-XXXX" /></div>
+          <button class="btn-primary btn-sm" onclick="verifyGuestAccess()">Mehmon sifatida kirish</button>
+        </div>`;
+        guestLoginBox.style.display = "none";
+        chatRoomCard.style.display = "block";
+
+        const activePeers = appState.accessList.filter(a => a.active);
+        if (activePeers.length === 0) {
+          selector.innerHTML = `<option value="">Dostup berilgan odam yo‘q</option>`;
+          activeChatPeerGmail = "";
+          document.getElementById("activeChatPeerTitle").textContent = "Avval «Dostup» bo‘limidan Gmail qo‘shing";
+        } else {
+          if (!activePeers.some(p => p.gmail === activeChatPeerGmail)) {
+            activeChatPeerGmail = activePeers[0].gmail;
+          }
+          selector.innerHTML = activePeers.map(p =>
+            `<option value="${p.gmail}" ${p.gmail === activeChatPeerGmail ? "selected" : ""}>${p.name} (${p.gmail})</option>`
+          ).join("");
+          const currentPeer = activePeers.find(p => p.gmail === activeChatPeerGmail);
+          document.getElementById("activeChatPeerTitle").textContent = currentPeer ? `${currentPeer.name} bilan maxfiy chat` : "Maxfiy chat";
+        }
+        renderChatMessages();
+      } else {
+        // Guest mode verification
+        const validRecord = appState.accessList.find(a => a.gmail === appState.currentGmail && a.active);
+        if (!validRecord) {
+          idBar.innerHTML = `<div style="color:var(--danger);font-size:12.5px;font-weight:600;">Kirish cheklangan: Faqat Qaxa dostup bergan Gmail manzillari kira oladi.</div>`;
+          guestLoginBox.style.display = "block";
+          chatRoomCard.style.display = "none";
+        } else {
+          idBar.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+            <span>Tasdiqlangan Gmail: <b style="color:var(--gold);">${validRecord.gmail}</b></span>
+            <button class="btn-secondary btn-sm" onclick="switchBackToOwner()">Chiqish</button>
+          </div>`;
+          guestLoginBox.style.display = "none";
+          chatRoomCard.style.display = "block";
+          selector.innerHTML = `<option value="qaxa.owner@gmail.com">Qaxa (Egasi)</option>`;
+          document.getElementById("activeChatPeerTitle").textContent = "Qaxa bilan maxfiy chat";
+          renderChatMessages();
+        }
+      }
+    }
+
+    function renderChatMessages() {
+      const box = document.getElementById("chatMessagesBox");
+      const peerGmail = appState.role === "OWNER" ? activeChatPeerGmail : appState.currentGmail;
+      if (!peerGmail) {
+        box.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12.5px;margin:auto;">Suhbat boshlash uchun «Dostup» bo‘limida Gmail manzil qo‘shing.</div>`;
+        return;
+      }
+      const roomKey = getChatRoomKey(peerGmail);
+      const msgs = appState.messages.filter(m => m.roomKey === roomKey);
+
+      if (msgs.length === 0) {
+        box.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:12.5px;margin:auto;">Xabarlar yo‘q. Matn, ovozli (🎙) yoki video (🎥) xabar yuboring — tashqi bildirishnoma chiqmaydi.</div>`;
+        return;
+      }
+
+      box.innerHTML = msgs.map(m => {
+        const isMine = m.senderGmail === appState.currentGmail;
+        const t = new Date(m.ts);
+        const timeStr = `${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+        let bodyHtml = `<div>${escapeHtml(m.content)}</div>`;
+        if (m.type === "audio" && m.mediaData) {
+          bodyHtml += `<audio controls src="${m.mediaData}"></audio>`;
+        } else if (m.type === "video" && m.mediaData) {
+          bodyHtml += `<video controls playsinline src="${m.mediaData}"></video>`;
+        }
+        return `<div class="msg ${isMine ? "mine" : "theirs"}">
+          <div class="msg-sender">${escapeHtml(m.senderName)}</div>
+          ${bodyHtml}
+          <div class="msg-time">${timeStr}</div>
+        </div>`;
+      }).join("");
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function exportBackupJson() {
+      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `MyNotes_Backup_${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      showToast("JSON zaxira fayli yuklandi!");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("open");
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toastBox");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove("show"), 3200);
+    }
+
+    function escapeHtml(str) {
+      return String(str || "").replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
